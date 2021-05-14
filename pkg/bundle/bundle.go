@@ -1,106 +1,98 @@
 package bundle
 
 import (
+	"bytes"
 	"crypto/sha256"
-	"encoding/json"
+	"embed"
 	"fmt"
+	"os"
 
-	"github.com/xenitab/opa-bundle-api/pkg/rule"
+	opabundle "github.com/open-policy-agent/opa/bundle"
 )
 
-type Bundle struct {
-	Manifest manifest
-	Rules    *rule.Rules
-	Policies Policies
-}
+var NullBundle = opabundle.Bundle{}
 
-type manifest struct {
-	Revision string   `json:"revision"`
-	Roots    []string `json:"roots,omitempty"`
-}
+//go:embed static/*
+var content embed.FS
 
-func (m *manifest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m)
-}
+func NewTarGzBundle(b opabundle.Bundle) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := opabundle.NewWriter(&buf)
 
-func (m *manifest) UnmarshalJSON(b []byte) error {
-	var res manifest
-	if err := json.Unmarshal(b, &res); err != nil {
-		return err
-	}
-
-	*m = res
-
-	return nil
-}
-
-type Policy struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
-}
-
-type Policies []Policy
-
-func (p *Policies) MarshalJSON() ([]byte, error) {
-	return json.Marshal(p)
-}
-
-func (p *Policies) UnmarshalJSON(b []byte) error {
-	var res Policies
-	if err := json.Unmarshal(b, &res); err != nil {
-		return err
-	}
-
-	*p = res
-
-	return nil
-}
-
-func GenerateBundle(r *rule.Rules, p Policies) (Bundle, error) {
-	pol, err := p.MarshalJSON()
+	err := writer.Write(b)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 
-	polHash, err := getHash(pol)
+	var res []byte
+	_, err = buf.Read(res)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 
-	rulesJson, err := r.GetAllJSON()
+	os.WriteFile("/tmp/test.tar.gz", res, 0600)
+
+	return res, nil
+}
+
+func NewBundle(data []byte) (opabundle.Bundle, error) {
+	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {
-		return Bundle{}, err
+		return NullBundle, err
 	}
 
-	rulesHash, err := getHash([]byte(rulesJson))
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	entries, err := content.ReadDir("static")
 	if err != nil {
-		return Bundle{}, err
+		return NullBundle, err
 	}
 
-	revision, err := getHash([]byte(fmt.Sprintf("%s-%s", polHash, rulesHash)))
+	for _, entry := range entries {
+		fileInfo, err := entry.Info()
+		if err != nil {
+			return NullBundle, err
+		}
+
+		if !fileInfo.IsDir() {
+			fileName := fileInfo.Name()
+			filePath := fmt.Sprintf("static/%s", fileName)
+			byte, err := content.ReadFile(filePath)
+			if err != nil {
+				return NullBundle, err
+			}
+			newFilePath := fmt.Sprintf("%s/%s", tmpDir, fileName)
+			err = os.WriteFile(newFilePath, byte, 0600)
+			if err != nil {
+				return NullBundle, err
+			}
+		}
+	}
+
+	dataFilePath := fmt.Sprintf("%s/data.json", tmpDir)
+	err = os.WriteFile(dataFilePath, data, 0600)
 	if err != nil {
-		return Bundle{}, err
+		return NullBundle, err
 	}
 
-	m := manifest{
-		Revision: revision,
+	loader := opabundle.NewDirectoryLoader(tmpDir)
+	reader := opabundle.NewCustomReader(loader).WithSkipBundleVerification(true)
+	b, err := reader.Read()
+	if err != nil {
+		return NullBundle, err
 	}
 
-	b := Bundle{
-		Manifest: m,
-		Rules:    r,
-		Policies: p,
+	h := sha256.New()
+	_, err = h.Write(data)
+	if err != nil {
+		return NullBundle, err
 	}
+
+	dataHash := fmt.Sprintf("%x", h.Sum(nil))
+
+	b.Manifest.Revision = dataHash
 
 	return b, nil
-}
-
-func getHash(b []byte) (string, error) {
-	h := sha256.New()
-	_, err := h.Write(b)
-	if err != nil {
-		return "", err
-	}
-
-	return string(h.Sum(nil)), nil
 }

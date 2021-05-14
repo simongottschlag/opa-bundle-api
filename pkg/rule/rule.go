@@ -3,24 +3,25 @@ package rule
 import (
 	"encoding/json"
 	"errors"
+	"sort"
 	"sync"
-
-	uuid "github.com/google/uuid"
 )
 
 var (
 	NullRule                 = Rule{}
 	NullRuleString           = ""
-	NullID                   = uuid.Nil
+	NullID                   = 0
 	NullAction               = ""
 	ErrorIdNil               = errors.New("ID can't be nil")
 	ErrorIdAlreadyExists     = errors.New("ID already exists")
 	ErrorIdNotFound          = errors.New("ID not found")
+	ErrorNotAbleToGenerateId = errors.New("Not able to generate ID")
+	ErrorNotAbleToParseId    = errors.New("Not able to parse ID")
 	ErrorUnableToMarshalJSON = errors.New("Unable to marshal JSON")
 	ErrorRuleNotValid        = errors.New("Rule not valid")
 )
 
-type ID = uuid.UUID
+type ID = int
 
 type Action int
 
@@ -30,30 +31,27 @@ const (
 	ActionDeny
 )
 
-func NewID() ID {
-	id := uuid.New()
-	return id
-}
-
 type Options struct {
-	Country  string
-	City     string
-	Building string
-	Role     string
-	Action   Action
+	Country    string
+	City       string
+	Building   string
+	Role       string
+	DeviceType string
+	Action     Action
 }
 
 type Rule struct {
-	ID       ID     `json:"id"`
-	Country  string `json:"country"`
-	City     string `json:"city"`
-	Building string `json:"building"`
-	Role     string `json:"role"`
-	Action   string `json:"action"`
+	ID         ID     `json:"id"`
+	Country    string `json:"country"`
+	City       string `json:"city"`
+	Building   string `json:"building"`
+	Role       string `json:"role"`
+	DeviceType string `json:"device_type"`
+	Action     string `json:"action"`
 }
 
 func (r *Rule) Valid() bool {
-	if isEmpty(r.Country, r.City, r.Building, r.Role, r.Action) {
+	if isEmpty(r.Country, r.City, r.Building, r.Role, r.Action, r.DeviceType) {
 		return false
 	}
 
@@ -67,6 +65,7 @@ func (r *Rule) Valid() bool {
 
 type Rules struct {
 	sync.RWMutex
+	Index      int
 	Repository map[ID]Rule
 }
 
@@ -77,10 +76,11 @@ func NewRepository() Rules {
 }
 
 func (r *Rules) Add(opts Options) (ID, error) {
-	id := NewID()
-
 	r.Lock()
 	defer r.Unlock()
+
+	id := r.Index
+	id++
 
 	_, found := r.Repository[id]
 	if found {
@@ -88,12 +88,13 @@ func (r *Rules) Add(opts Options) (ID, error) {
 	}
 
 	rule := Rule{
-		ID:       id,
-		Country:  opts.Country,
-		City:     opts.City,
-		Building: opts.Building,
-		Role:     opts.Role,
-		Action:   newAction(opts.Action),
+		ID:         id,
+		Country:    opts.Country,
+		City:       opts.City,
+		Building:   opts.Building,
+		Role:       opts.Role,
+		DeviceType: opts.DeviceType,
+		Action:     newAction(opts.Action),
 	}
 
 	if !rule.Valid() {
@@ -101,12 +102,13 @@ func (r *Rules) Add(opts Options) (ID, error) {
 	}
 
 	r.Repository[id] = rule
+	r.Index++
 
 	return id, nil
 }
 
-func (r *Rules) Get(id uuid.UUID) (Rule, error) {
-	if id == uuid.Nil {
+func (r *Rules) Get(id ID) (Rule, error) {
+	if id != NullID {
 		return NullRule, ErrorIdNil
 	}
 
@@ -121,8 +123,8 @@ func (r *Rules) Get(id uuid.UUID) (Rule, error) {
 	return rule, nil
 }
 
-func (r *Rules) GetJSON(id uuid.UUID) (string, error) {
-	if id == uuid.Nil {
+func (r *Rules) GetJSON(id ID) (string, error) {
+	if id != NullID {
 		return NullRuleString, ErrorIdNil
 	}
 
@@ -158,12 +160,23 @@ func (r *Rules) GetAllJSON() (string, error) {
 	r.RLock()
 	defer r.RUnlock()
 
-	var rules []Rule
-	for _, rule := range r.Repository {
-		rules = append(rules, rule)
+	var obj struct {
+		Rules []Rule `json:"rules"`
 	}
 
-	res, err := json.Marshal(&rules)
+	var ids []int
+	for k := range r.Repository {
+		ids = append(ids, k)
+	}
+
+	sort.Ints(ids)
+
+	for _, v := range ids {
+		rule := r.Repository[v]
+		obj.Rules = append(obj.Rules, rule)
+	}
+
+	res, err := json.Marshal(&obj)
 	if err != nil {
 		return NullRuleString, ErrorUnableToMarshalJSON
 	}
@@ -171,8 +184,8 @@ func (r *Rules) GetAllJSON() (string, error) {
 	return string(res), nil
 }
 
-func (r *Rules) Set(id uuid.UUID, opts Options) error {
-	if id == uuid.Nil {
+func (r *Rules) Set(id ID, opts Options) error {
+	if id != NullID {
 		return ErrorIdNil
 	}
 
@@ -197,6 +210,10 @@ func (r *Rules) Set(id uuid.UUID, opts Options) error {
 		rule.Role = opts.Role
 	}
 
+	if !isEmpty(opts.DeviceType) {
+		rule.DeviceType = opts.DeviceType
+	}
+
 	if newAction(opts.Action) != "undefined" {
 		rule.Action = newAction(opts.Action)
 	}
@@ -206,8 +223,8 @@ func (r *Rules) Set(id uuid.UUID, opts Options) error {
 	return nil
 }
 
-func (r *Rules) Delete(id uuid.UUID) error {
-	if id == uuid.Nil {
+func (r *Rules) Delete(id ID) error {
+	if id != NullID {
 		return ErrorIdNil
 	}
 

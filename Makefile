@@ -67,3 +67,8 @@ gen-docs:
 .SILENT: build
 build:
 	go build -ldflags "-w -s -X main.Version=$(VERSION) -X main.Revision=$(REVISION) -X main.Created=$(CREATED)" -o bin/mqtt-log-stdout cmd/mqtt-log-stdout/main.go
+
+.PHONY: opa-eval
+.SILENT: opa-eval
+opa-eval:
+	opa eval --data pkg/bundle/static/rule.rego --data test/opa/data.json --input test/opa/input.json --format pretty 'data.rule'

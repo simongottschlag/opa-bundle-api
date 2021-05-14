@@ -29,6 +29,7 @@ func main() {
 
 	err = start(cfg)
 	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
@@ -38,17 +39,18 @@ func main() {
 func start(cfg config.Client) error {
 	rules := rule.NewRepository()
 	for i := 1; i <= 5; i++ {
-		rand, err := generateRandomString(10)
-		if err != nil {
-			return err
-		}
+		// rand, err := generateRandomString(10)
+		// if err != nil {
+		// 	return err
+		// }
 
-		_, err = rules.Add(rule.Options{
-			Country:  fmt.Sprintf("Sweden-%d", i),
-			City:     fmt.Sprintf("Gothenburg-%d", i),
-			Building: fmt.Sprintf("HQ-%d", i),
-			Role:     fmt.Sprintf("admin-%s", rand),
-			Action:   rule.ActionAllow,
+		_, err := rules.Add(rule.Options{
+			Country:    fmt.Sprintf("Sweden-%d", i),
+			City:       fmt.Sprintf("Gothenburg-%d", i),
+			Building:   fmt.Sprintf("HQ-%d", i),
+			Role:       fmt.Sprintf("admin-%d", i),
+			DeviceType: fmt.Sprintf("deviceType-%d", i),
+			Action:     rule.ActionAllow,
 		})
 
 		if err != nil {
@@ -56,19 +58,24 @@ func start(cfg config.Client) error {
 		}
 	}
 
-	pol := bundle.Policies{
-		{
-			Name:    "test-name",
-			Content: "test-content",
-		},
-	}
-
-	bundle, err := bundle.GenerateBundle(&rules, pol)
+	data, err := rules.GetAllJSON()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(bundle)
+	b, err := bundle.NewBundle([]byte(data))
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Modules: %v\n", b.Modules)
+	fmt.Printf("Data: %v\n", b.Data)
+	fmt.Printf("Manifest.Revision: %s\n", b.Manifest.Revision)
+
+	_, err = bundle.NewTarGzBundle(b)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
