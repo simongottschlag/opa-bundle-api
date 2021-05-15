@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+  opa:
+    image: "openpolicyagent/opa:latest-rootless"
+    command: ["run", "--server", "--addr", ":8181", "--config-file", "/config/config.yaml"]
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./test/opa-container:/config
+    links:
+      - api

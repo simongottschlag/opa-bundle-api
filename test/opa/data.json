@@ -1,0 +1,49 @@
+{
+    "rules": [
+        {
+            "id": "1",
+            "country": "Sweden",
+            "city": "Gothenburg",
+            "building": "HQ",
+            "role": "admin",
+            "device_type": "test",
+            "action": "allow"
+        },
+        {
+            "id": "2",
+            "country": "Sweden",
+            "city": "Alingsås",
+            "building": "Branch-1",
+            "role": "user",
+            "device_type": "test",
+            "action": "allow"
+        },
+        {
+            "id": "3",
+            "country": "ANY",
+            "city": "Alingsås",
+            "building": "Branch-1",
+            "role": "user",
+            "device_type": "test",
+            "action": "allow"
+        },
+        {
+            "id": "4",
+            "country": "Sweden",
+            "city": "ANY",
+            "building": "Branch-1",
+            "role": "user",
+            "device_type": "test",
+            "action": "allow"
+        },
+        {
+            "id": "5",
+            "country": "Sweden",
+            "city": "TEST",
+            "building": "Branch-1",
+            "role": "user",
+            "device_type": "test",
+            "action": "deny"
+        }
+    ]
+}
