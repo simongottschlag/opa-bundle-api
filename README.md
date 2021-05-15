@@ -1,8 +1,27 @@
 # opa-bundle-api
 Proof-of-concept for an API to produce OPA bundles
 
+## Service overview
 
-## cURL
+The proof of concept is to show that it is possible to generate Open Policy Agent bundles dynamically and have OPA periodically download them (if changed).
+
+The whole picture would look something like this:
+
+![overview](assets/overview.png)
+
+In the proof of concept, there's no additional services for allowing/denying access, updating the database etcetera but shows how the concept could be.
+
+## Running with docker-compose
+
+Start:
+
+```shell
+docker-compose up
+```
+
+Stop with `CTRL+C`
+
+## Testing API with cURL
 
 ### Download bundle
 
@@ -64,4 +83,28 @@ curl -X PUT --header "Content-Type: application/json" --data $DATA localhost:808
 
 ```shell
 curl -X DELETE localhost:8080/rules/1
+```
+
+## Testing OPA with cURL
+
+### Get Policies
+
+```shell
+curl localhost:8181/v1/policies
+```
+
+### Test Policy
+
+`Allowed`:
+
+```shell
+DATA='{"input":{"user":"Simon","country":"Sweden","city":"Alingsås","building":"Branch","role":"user","device_type":"Printer"}}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8181/v1/data/rule/allow
+```
+
+`Denied`:
+
+```shell
+DATA='{"input":{"user":"Simon","country":"Sweden","city":"Alingsås","building":"HQ","role":"user","device_type":"Printer"}}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8181/v1/data/rule/allow
 ```
