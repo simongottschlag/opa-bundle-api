@@ -66,7 +66,7 @@ gen-docs:
 .PHONY: build
 .SILENT: build
 build:
-	go build -ldflags "-w -s -X main.Version=$(VERSION) -X main.Revision=$(REVISION) -X main.Created=$(CREATED)" -o bin/mqtt-log-stdout cmd/mqtt-log-stdout/main.go
+	go build -ldflags "-w -s -X main.Version=$(VERSION) -X main.Revision=$(REVISION) -X main.Created=$(CREATED)" -o bin/opa-bundle-api cmd/opa-bundle-api/main.go
 
 .PHONY: opa-eval
 .SILENT: opa-eval

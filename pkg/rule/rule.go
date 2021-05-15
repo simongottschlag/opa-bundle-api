@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strconv"
 	"sync"
 )
 
 var (
+	WildcardString           = "ANY"
 	NullRule                 = Rule{}
 	NullRuleString           = ""
 	NullID                   = 0
 	NullAction               = ""
-	ErrorIdNil               = errors.New("ID can't be nil")
 	ErrorIdAlreadyExists     = errors.New("ID already exists")
 	ErrorIdNotFound          = errors.New("ID not found")
 	ErrorNotAbleToGenerateId = errors.New("Not able to generate ID")
@@ -55,10 +56,6 @@ func (r *Rule) Valid() bool {
 		return false
 	}
 
-	if r.ID == NullID {
-		return false
-	}
-
 	return true
 
 }
@@ -69,10 +66,14 @@ type Rules struct {
 	Repository map[ID]Rule
 }
 
-func NewRepository() Rules {
-	return Rules{
+func NewRepository() *Rules {
+	return &Rules{
 		Repository: make(map[ID]Rule),
 	}
+}
+
+func StringToID(id string) (ID, error) {
+	return strconv.Atoi(id)
 }
 
 func (r *Rules) Add(opts Options) (ID, error) {
@@ -94,7 +95,7 @@ func (r *Rules) Add(opts Options) (ID, error) {
 		Building:   opts.Building,
 		Role:       opts.Role,
 		DeviceType: opts.DeviceType,
-		Action:     newAction(opts.Action),
+		Action:     FromAction(opts.Action),
 	}
 
 	if !rule.Valid() {
@@ -108,10 +109,6 @@ func (r *Rules) Add(opts Options) (ID, error) {
 }
 
 func (r *Rules) Get(id ID) (Rule, error) {
-	if id != NullID {
-		return NullRule, ErrorIdNil
-	}
-
 	r.RLock()
 	defer r.RUnlock()
 
@@ -124,10 +121,6 @@ func (r *Rules) Get(id ID) (Rule, error) {
 }
 
 func (r *Rules) GetJSON(id ID) (string, error) {
-	if id != NullID {
-		return NullRuleString, ErrorIdNil
-	}
-
 	r.RLock()
 	defer r.RUnlock()
 
@@ -148,8 +141,16 @@ func (r *Rules) GetAll() ([]Rule, error) {
 	r.RLock()
 	defer r.RUnlock()
 
+	var ids []int
+	for k := range r.Repository {
+		ids = append(ids, k)
+	}
+
+	sort.Ints(ids)
+
 	var rules []Rule
-	for _, rule := range r.Repository {
+	for _, v := range ids {
+		rule := r.Repository[v]
 		rules = append(rules, rule)
 	}
 
@@ -185,10 +186,6 @@ func (r *Rules) GetAllJSON() (string, error) {
 }
 
 func (r *Rules) Set(id ID, opts Options) error {
-	if id != NullID {
-		return ErrorIdNil
-	}
-
 	r.Lock()
 	defer r.Unlock()
 
@@ -214,8 +211,8 @@ func (r *Rules) Set(id ID, opts Options) error {
 		rule.DeviceType = opts.DeviceType
 	}
 
-	if newAction(opts.Action) != "undefined" {
-		rule.Action = newAction(opts.Action)
+	if FromAction(opts.Action) != "undefined" {
+		rule.Action = FromAction(opts.Action)
 	}
 
 	r.Repository[id] = rule
@@ -224,19 +221,20 @@ func (r *Rules) Set(id ID, opts Options) error {
 }
 
 func (r *Rules) Delete(id ID) error {
-	if id != NullID {
-		return ErrorIdNil
-	}
-
 	r.Lock()
 	defer r.Unlock()
+
+	_, found := r.Repository[id]
+	if !found {
+		return ErrorIdNotFound
+	}
 
 	delete(r.Repository, id)
 
 	return nil
 }
 
-func newAction(action Action) string {
+func FromAction(action Action) string {
 	switch action {
 	case ActionAllow:
 		return "allow"
@@ -246,6 +244,19 @@ func newAction(action Action) string {
 		return "undefined"
 	default:
 		return "undefined"
+	}
+}
+
+func ToAction(action string) Action {
+	switch action {
+	case "allow":
+		return ActionAllow
+	case "deny":
+		return ActionDeny
+	case "undefined":
+		return ActionUndefined
+	default:
+		return ActionUndefined
 	}
 }
 
