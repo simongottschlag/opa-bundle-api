@@ -68,15 +68,18 @@ func start(cfg config.Client) error {
 	revision, err := util.BytesToHash(dataBytes)
 
 	bundleClient := bundle.NewClient()
-	err = bundleClient.Generate(dataBytes, revision)
+	a, err := bundleClient.GetArchive(dataBytes, revision)
 	if err != nil {
 		return err
 	}
 
-	err = bundleClient.GenerateArchive()
+	b, err := bundleClient.Get(dataBytes, revision)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Archive: %x\n", a)
+	fmt.Printf("Manifest revision: %s\n", b.Manifest.Revision)
 
 	return nil
 }

@@ -17,7 +17,7 @@ var NullBundle = opabundle.Bundle{}
 //go:embed static/*
 var content embed.FS
 
-type Client struct {
+type client struct {
 	sync.RWMutex
 	opaBundle        opabundle.Bundle
 	bundled          bool
@@ -27,36 +27,41 @@ type Client struct {
 	archiveRevision  string
 }
 
-func NewClient() *Client {
-	return &Client{
+func NewClient() *client {
+	return &client{
 		bundled:  false,
 		archived: false,
 	}
 }
 
-func (c *Client) Get() (opabundle.Bundle, error) {
-	c.RLock()
-	defer c.RUnlock()
-
-	if !c.bundled {
-		return NullBundle, errors.New("No bundle created, run Generate() before running Get().")
+func (c *client) Get(data []byte, revision string) (opabundle.Bundle, error) {
+	if !c.bundled || c.revision != revision {
+		err := c.generate(data, revision)
+		if err != nil {
+			return NullBundle, err
+		}
 	}
 
 	return c.opaBundle, nil
 }
 
-func (c *Client) GetArchive() ([]byte, error) {
-	c.RLock()
-	defer c.RUnlock()
+func (c *client) GetArchive(data []byte, revision string) ([]byte, error) {
+	if !c.archived || c.archiveRevision != revision {
+		err := c.generate(data, revision)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	if !c.archived {
-		return nil, errors.New("No bundle created, run Generate() before running Get().")
+	err := c.generateArchive()
+	if err != nil {
+		return nil, err
 	}
 
 	return c.opaBundleArchive, nil
 }
 
-func (c *Client) GenerateArchive() error {
+func (c *client) generateArchive() error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -84,7 +89,7 @@ func (c *Client) GenerateArchive() error {
 	return nil
 }
 
-func (c *Client) Generate(data []byte, revision string) error {
+func (c *client) generate(data []byte, revision string) error {
 	c.Lock()
 	defer c.Unlock()
 
