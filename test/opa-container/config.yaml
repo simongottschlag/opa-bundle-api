@@ -1,0 +1,12 @@
+services:
+  - name: api
+    url: http://api:8080
+
+bundles:
+  api:
+    service: api
+    resource: bundle/bundle.tar.gz
+    persist: false
+    polling:
+      min_delay_seconds: 10
+      max_delay_seconds: 20
