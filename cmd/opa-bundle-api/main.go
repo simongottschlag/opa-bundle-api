@@ -9,6 +9,7 @@ import (
 	"github.com/xenitab/opa-bundle-api/pkg/bundle"
 	"github.com/xenitab/opa-bundle-api/pkg/config"
 	"github.com/xenitab/opa-bundle-api/pkg/rule"
+	"github.com/xenitab/opa-bundle-api/pkg/util"
 )
 
 var (
@@ -63,16 +64,16 @@ func start(cfg config.Client) error {
 		return err
 	}
 
-	b, err := bundle.NewBundle([]byte(data))
+	dataBytes := []byte(data)
+	revision, err := util.BytesToHash(dataBytes)
+
+	bundleClient := bundle.NewClient()
+	err = bundleClient.Generate(dataBytes, revision)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Modules: %v\n", b.Modules)
-	fmt.Printf("Data: %v\n", b.Data)
-	fmt.Printf("Manifest.Revision: %s\n", b.Manifest.Revision)
-
-	_, err = bundle.NewTarGzBundle(b)
+	err = bundleClient.GenerateArchive()
 	if err != nil {
 		return err
 	}
