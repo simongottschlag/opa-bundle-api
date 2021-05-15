@@ -13,6 +13,64 @@ In the proof of concept, there's no additional services for allowing/denying acc
 
 ## Additional information
 
+### Rules
+
+A rule looks like this in the code:
+
+```Golang
+type Rule struct {
+	ID         ID     `json:"id"`
+	Country    string `json:"country"`
+	City       string `json:"city"`
+	Building   string `json:"building"`
+	Role       string `json:"role"`
+	DeviceType string `json:"device_type"`
+	Action     string `json:"action"`
+}
+```
+
+It will look something like this in the bundle (`data.json`):
+
+```json
+{
+  "rules": [
+    {
+      "action": "allow",
+      "building": "ANY",
+      "city": "ANY",
+      "country": "ANY",
+      "device_type": "ANY",
+      "id": 1,
+      "role": "super_admin"
+    },
+    {
+      "action": "allow",
+      "building": "ANY",
+      "city": "ANY",
+      "country": "Sweden",
+      "device_type": "ANY",
+      "id": 2,
+      "role": "sweden_admin"
+    }
+  ]
+}
+```
+
+Look at [pkg/rule/rule.go](pkg/rule/rule.go) to dig deeper.
+
+### Policy
+
+You can find the only current policy here: [rule.rego](pkg/bundle/static/rule.rego)
+
+This file will be embedded in the Golang binary at compilation and used together with the dynamic rules to create the [OPA Bundle](https://www.openpolicyagent.org/docs/latest/management-bundles/).
+
+The important parts of the current rule are:
+
+- The keyword `ANY` for `country`, `city`, `building`, `role` and `device_type` means a wildcard.
+- The keyword `undefined` for `action` means it will use the default action which is `action = deny`
+- Any matches `action = allow` will allow access as long as there are no matches for `action = deny`
+- Even if there are multiple rules that gives a user `action = allow`, a single `action = deny` will set `allow` to `false` 
+
 ### Source code
 
 #### cmd/opa-bundle-api
