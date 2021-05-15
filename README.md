@@ -11,6 +11,65 @@ The whole picture would look something like this:
 
 In the proof of concept, there's no additional services for allowing/denying access, updating the database etcetera but shows how the concept could be.
 
+## Additional information
+
+### Source code
+
+#### cmd/opa-bundle-api
+
+File: [`cmd/opa-bundle-api/main.go`](cmd/opa-bundle-api/main.go)
+
+- Loads the repository (`database`) containing the rules, adds a few pre-defined rules to it. 
+- Loads the OPA Bundle client (`bundleClient`) and starts the API.
+
+#### pkg/bundle
+
+Directory: [`pkg/bundle`](pkg/bundle)
+
+- Contains the logic around building OPA Bundles.
+- Contains static rules for OPA (written in `rego`) which are added to the bundles
+
+#### pkg/config
+
+Directory: [`pkg/config`](pkg/config)
+
+- The application configuration built with [urfave](https://github.com/urfave/cli)
+- Overly complex for the proof-of-concept, but copied from another [project](https://github.com/XenitAB/mqtt-log-stdout)
+
+#### pkg/handler
+
+Directory: [`pkg/handler`](pkg/handler)
+
+- Contains the logic for the REST API, invoked as Echo handlers
+
+#### pkg/rule
+
+Directory: [`pkg/rule`](pkg/rule)
+
+- Contains the repository (`database`) for all the rules that are injected into the bundle
+- Here is the logic around adding new rules, showing them etcetera
+
+#### pkg/util
+
+Directory: [`pkg/util`](pkg/util)
+
+- Just some utils, hashing of data to become `revision` and `ETag` as an example
+
+### API
+
+The API (built with [`Echo`](https://echo.labstack.com/)) takes care of everything right now and at start-up populates a few pre-defined rules.
+
+Right now it is self contained, but could just as well read the data about the rules from a database or another API. Using a hashmap for convinience.
+
+#### Endpoints
+
+- `GET /rules`: reads all rules
+- `POST /rules`: creates a rule
+- `GET /rules/:id`: reads rule with `:id`
+- `PUT /rules/:id`: updates rule with `:id`
+- `DELETE /rules/:id`: deletes rule with `:id`
+- `GET /bundle/bundle.tar.gz`: downloads the current OPA bundle (containing the module + dynamic data)
+
 ## Running with docker-compose
 
 Start:
