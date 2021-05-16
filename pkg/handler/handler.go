@@ -12,13 +12,13 @@ import (
 type Options struct {
 	Repository   *rule.Rules
 	BundleClient *bundle.Client
-	LogsClient   *logs.Logs
+	LogsClient   *logs.Client
 }
 
 type Client struct {
 	repository   *rule.Rules
 	bundleClient *bundle.Client
-	logsClient   *logs.Logs
+	logsClient   *logs.Client
 }
 
 func NewClient(opts Options) *Client {

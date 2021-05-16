@@ -90,7 +90,7 @@ func newConfigClient() (config.Client, error) {
 	return config.NewClient(opts)
 }
 
-func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client, logsClient *logs.Logs) *handler.Client {
+func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client, logsClient *logs.Client) *handler.Client {
 	opts := handler.Options{
 		Repository:   repository,
 		BundleClient: bundleClient,

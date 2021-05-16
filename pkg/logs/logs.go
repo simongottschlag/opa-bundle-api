@@ -15,37 +15,37 @@ var (
 
 type DecisionID = string
 
-type Logs struct {
+type Client struct {
 	sync.RWMutex
 	logs map[DecisionID]opalogs.EventV1
 }
 
-func NewClient() *Logs {
-	return &Logs{
+func NewClient() *Client {
+	return &Client{
 		logs: make(map[DecisionID]opalogs.EventV1),
 	}
 }
 
-func (l *Logs) Create(log opalogs.EventV1) error {
-	l.Lock()
-	defer l.Unlock()
+func (client *Client) Create(log opalogs.EventV1) error {
+	client.Lock()
+	defer client.Unlock()
 
-	_, found := l.logs[log.DecisionID]
+	_, found := client.logs[log.DecisionID]
 	if found {
 		return ErrorIDAlreadyExists
 	}
 
-	l.logs[log.DecisionID] = log
+	client.logs[log.DecisionID] = log
 
 	return nil
 }
 
-func (l *Logs) CreateMultiple(logs []opalogs.EventV1) error {
-	l.Lock()
-	defer l.Unlock()
+func (client *Client) CreateMultiple(logs []opalogs.EventV1) error {
+	client.Lock()
+	defer client.Unlock()
 
 	for _, log := range logs {
-		err := l.createWithoutLock(log)
+		err := client.createWithoutLock(log)
 		if err != nil {
 			return err
 		}
@@ -54,22 +54,22 @@ func (l *Logs) CreateMultiple(logs []opalogs.EventV1) error {
 	return nil
 }
 
-func (l *Logs) createWithoutLock(log opalogs.EventV1) error {
-	_, found := l.logs[log.DecisionID]
+func (client *Client) createWithoutLock(log opalogs.EventV1) error {
+	_, found := client.logs[log.DecisionID]
 	if found {
 		return ErrorIDAlreadyExists
 	}
 
-	l.logs[log.DecisionID] = log
+	client.logs[log.DecisionID] = log
 
 	return nil
 }
 
-func (l *Logs) Read(id DecisionID) (opalogs.EventV1, error) {
-	l.RLock()
-	defer l.RUnlock()
+func (client *Client) Read(id DecisionID) (opalogs.EventV1, error) {
+	client.RLock()
+	defer client.RUnlock()
 
-	log, found := l.logs[id]
+	log, found := client.logs[id]
 	if !found {
 		return NullOpaEvent, ErrorIDNotFound
 	}
@@ -77,12 +77,12 @@ func (l *Logs) Read(id DecisionID) (opalogs.EventV1, error) {
 	return log, nil
 }
 
-func (l *Logs) ReadAll() []opalogs.EventV1 {
-	l.RLock()
-	defer l.RUnlock()
+func (client *Client) ReadAll() []opalogs.EventV1 {
+	client.RLock()
+	defer client.RUnlock()
 
 	var logs []opalogs.EventV1
-	for _, log := range l.logs {
+	for _, log := range client.logs {
 		logs = append(logs, log)
 	}
 
