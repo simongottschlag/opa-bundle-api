@@ -9,7 +9,7 @@ import (
 )
 
 func (client *Client) GetBundle(c echo.Context) error {
-	data, err := client.repository.GetAllJSON()
+	data, err := client.ruleClient.GetAllJSON()
 	if err != nil {
 		return err
 	}

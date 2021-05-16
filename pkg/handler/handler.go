@@ -10,20 +10,20 @@ import (
 )
 
 type Options struct {
-	Repository   *rule.Rules
+	RuleClient   *rule.Client
 	BundleClient *bundle.Client
 	LogsClient   *logs.Client
 }
 
 type Client struct {
-	repository   *rule.Rules
+	ruleClient   *rule.Client
 	bundleClient *bundle.Client
 	logsClient   *logs.Client
 }
 
 func NewClient(opts Options) *Client {
 	return &Client{
-		repository:   opts.Repository,
+		ruleClient:   opts.RuleClient,
 		bundleClient: opts.BundleClient,
 		logsClient:   opts.LogsClient,
 	}

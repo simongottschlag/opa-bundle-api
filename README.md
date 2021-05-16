@@ -77,8 +77,8 @@ The important parts of the current rule are:
 
 File: [`cmd/opa-bundle-api/main.go`](cmd/opa-bundle-api/main.go)
 
-- Loads the repository (`database`) containing the rules, adds a few pre-defined rules to it. 
-- Loads the OPA Bundle client (`bundleClient`) and starts the API.
+- Entrypoint for the application
+- Loads all the clients and the API
 
 #### pkg/bundle
 
@@ -110,7 +110,7 @@ Directory: [`pkg/logs`](pkg/logs)
 
 Directory: [`pkg/rule`](pkg/rule)
 
-- Contains the repository (`database`) for all the rules that are injected into the bundle
+- Contains the rule client for all the dynamic rules that are injected into the bundle
 - Here is the logic around adding new rules, showing them etcetera
 
 #### pkg/util

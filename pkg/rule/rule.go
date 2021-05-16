@@ -51,8 +51,8 @@ type Rule struct {
 	Action     string `json:"action"`
 }
 
-func (r *Rule) Valid() bool {
-	if isEmpty(r.Country, r.City, r.Building, r.Role, r.Action, r.DeviceType) {
+func (rule *Rule) Valid() bool {
+	if isEmpty(rule.Country, rule.City, rule.Building, rule.Role, rule.Action, rule.DeviceType) {
 		return false
 	}
 
@@ -60,15 +60,15 @@ func (r *Rule) Valid() bool {
 
 }
 
-type Rules struct {
+type Client struct {
 	sync.RWMutex
-	Index      int
-	Repository map[ID]Rule
+	Index int
+	rules map[ID]Rule
 }
 
-func NewRepository() *Rules {
-	return &Rules{
-		Repository: make(map[ID]Rule),
+func NewClient() *Client {
+	return &Client{
+		rules: make(map[ID]Rule),
 	}
 }
 
@@ -76,14 +76,14 @@ func StringToID(id string) (ID, error) {
 	return strconv.Atoi(id)
 }
 
-func (r *Rules) Add(opts Options) (ID, error) {
-	r.Lock()
-	defer r.Unlock()
+func (client *Client) Add(opts Options) (ID, error) {
+	client.Lock()
+	defer client.Unlock()
 
-	id := r.Index
+	id := client.Index
 	id++
 
-	_, found := r.Repository[id]
+	_, found := client.rules[id]
 	if found {
 		return NullID, ErrorIdAlreadyExists
 	}
@@ -102,17 +102,17 @@ func (r *Rules) Add(opts Options) (ID, error) {
 		return NullID, ErrorRuleNotValid
 	}
 
-	r.Repository[id] = rule
-	r.Index++
+	client.rules[id] = rule
+	client.Index++
 
 	return id, nil
 }
 
-func (r *Rules) Get(id ID) (Rule, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (client *Client) Get(id ID) (Rule, error) {
+	client.RLock()
+	defer client.RUnlock()
 
-	rule, found := r.Repository[id]
+	rule, found := client.rules[id]
 	if !found {
 		return NullRule, ErrorIdNotFound
 	}
@@ -120,11 +120,11 @@ func (r *Rules) Get(id ID) (Rule, error) {
 	return rule, nil
 }
 
-func (r *Rules) GetJSON(id ID) (string, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (client *Client) GetJSON(id ID) (string, error) {
+	client.RLock()
+	defer client.RUnlock()
 
-	rule, found := r.Repository[id]
+	rule, found := client.rules[id]
 	if !found {
 		return NullRuleString, ErrorIdNotFound
 	}
@@ -137,12 +137,12 @@ func (r *Rules) GetJSON(id ID) (string, error) {
 	return string(res), nil
 }
 
-func (r *Rules) GetAll() ([]Rule, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (client *Client) GetAll() ([]Rule, error) {
+	client.RLock()
+	defer client.RUnlock()
 
 	var ids []int
-	for k := range r.Repository {
+	for k := range client.rules {
 		ids = append(ids, k)
 	}
 
@@ -150,30 +150,30 @@ func (r *Rules) GetAll() ([]Rule, error) {
 
 	var rules []Rule
 	for _, v := range ids {
-		rule := r.Repository[v]
+		rule := client.rules[v]
 		rules = append(rules, rule)
 	}
 
 	return rules, nil
 }
 
-func (r *Rules) GetAllJSON() (string, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (client *Client) GetAllJSON() (string, error) {
+	client.RLock()
+	defer client.RUnlock()
 
 	var obj struct {
 		Rules []Rule `json:"rules"`
 	}
 
 	var ids []int
-	for k := range r.Repository {
+	for k := range client.rules {
 		ids = append(ids, k)
 	}
 
 	sort.Ints(ids)
 
 	for _, v := range ids {
-		rule := r.Repository[v]
+		rule := client.rules[v]
 		obj.Rules = append(obj.Rules, rule)
 	}
 
@@ -185,11 +185,11 @@ func (r *Rules) GetAllJSON() (string, error) {
 	return string(res), nil
 }
 
-func (r *Rules) Set(id ID, opts Options) error {
-	r.Lock()
-	defer r.Unlock()
+func (client *Client) Set(id ID, opts Options) error {
+	client.Lock()
+	defer client.Unlock()
 
-	rule := r.Repository[id]
+	rule := client.rules[id]
 
 	if !isEmpty(opts.Country) {
 		rule.Country = opts.Country
@@ -215,21 +215,21 @@ func (r *Rules) Set(id ID, opts Options) error {
 		rule.Action = FromAction(opts.Action)
 	}
 
-	r.Repository[id] = rule
+	client.rules[id] = rule
 
 	return nil
 }
 
-func (r *Rules) Delete(id ID) error {
-	r.Lock()
-	defer r.Unlock()
+func (client *Client) Delete(id ID) error {
+	client.Lock()
+	defer client.Unlock()
 
-	_, found := r.Repository[id]
+	_, found := client.rules[id]
 	if !found {
 		return ErrorIdNotFound
 	}
 
-	delete(r.Repository, id)
+	delete(client.rules, id)
 
 	return nil
 }

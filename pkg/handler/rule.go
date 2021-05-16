@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) ReadRules(c echo.Context) error {
-	rules, err := client.repository.GetAll()
+	rules, err := client.ruleClient.GetAll()
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -36,12 +36,12 @@ func (client *Client) CreateRule(c echo.Context) error {
 		Action:     rule.ToAction(r.Action),
 	}
 
-	id, err := client.repository.Add(opts)
+	id, err := client.ruleClient.Add(opts)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	rule, err := client.repository.Get(id)
+	rule, err := client.ruleClient.Get(id)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -55,7 +55,7 @@ func (client *Client) ReadRule(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	rule, err := client.repository.Get(id)
+	rule, err := client.ruleClient.Get(id)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -84,12 +84,12 @@ func (client *Client) UpdateRule(c echo.Context) error {
 		Action:     rule.ToAction(r.Action),
 	}
 
-	err = client.repository.Set(id, opts)
+	err = client.ruleClient.Set(id, opts)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	rule, err := client.repository.Get(id)
+	rule, err := client.ruleClient.Get(id)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -103,7 +103,7 @@ func (client *Client) DeleteRule(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	err = client.repository.Delete(id)
+	err = client.ruleClient.Delete(id)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}

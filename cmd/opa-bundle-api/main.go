@@ -41,9 +41,9 @@ func main() {
 }
 
 func start(cfg config.Client) error {
-	rules := rule.NewRepository()
+	rules := rule.NewClient()
 
-	err := seedRepository(rules)
+	err := seedRules(rules)
 	if err != nil {
 		return err
 	}
@@ -90,9 +90,9 @@ func newConfigClient() (config.Client, error) {
 	return config.NewClient(opts)
 }
 
-func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client, logsClient *logs.Client) *handler.Client {
+func newHandlerClient(ruleClient *rule.Client, bundleClient *bundle.Client, logsClient *logs.Client) *handler.Client {
 	opts := handler.Options{
-		Repository:   repository,
+		RuleClient:   ruleClient,
 		BundleClient: bundleClient,
 		LogsClient:   logsClient,
 	}
@@ -100,7 +100,7 @@ func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client, logsC
 	return handler.NewClient(opts)
 }
 
-func seedRepository(repostiory *rule.Rules) error {
+func seedRules(ruleClient *rule.Client) error {
 	rules := []rule.Options{
 		{
 			// super_admin should have access to everything
@@ -186,7 +186,7 @@ func seedRepository(repostiory *rule.Rules) error {
 	}
 
 	for _, opt := range rules {
-		_, err := repostiory.Add(opt)
+		_, err := ruleClient.Add(opt)
 		if err != nil {
 			return err
 		}
