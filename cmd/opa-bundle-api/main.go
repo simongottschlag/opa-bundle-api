@@ -52,6 +52,7 @@ func start(cfg config.Client) error {
 
 	e := echo.New()
 	e.Use(middleware.Recover())
+	e.Use(middleware.Secure())
 	e.Use(middleware.Logger())
 
 	e.GET("/", handlerClient.Default)
