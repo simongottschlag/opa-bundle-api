@@ -8,6 +8,7 @@ import (
 	"github.com/xenitab/opa-bundle-api/pkg/bundle"
 	"github.com/xenitab/opa-bundle-api/pkg/config"
 	"github.com/xenitab/opa-bundle-api/pkg/handler"
+	"github.com/xenitab/opa-bundle-api/pkg/logs"
 	"github.com/xenitab/opa-bundle-api/pkg/rule"
 
 	"github.com/labstack/echo/v4"
@@ -48,7 +49,8 @@ func start(cfg config.Client) error {
 	}
 
 	bundleClient := bundle.NewClient()
-	handlerClient := newHandlerClient(rules, bundleClient)
+	logsClient := logs.NewClient()
+	handlerClient := newHandlerClient(rules, bundleClient, logsClient)
 
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -57,13 +59,20 @@ func start(cfg config.Client) error {
 
 	e.GET("/", handlerClient.Default)
 
-	e.GET("/rules", handlerClient.ReadRules)
-	e.POST("/rules", handlerClient.CreateRule)
-	e.GET("/rules/:id", handlerClient.ReadRule)
-	e.PUT("/rules/:id", handlerClient.UpdateRule)
-	e.DELETE("/rules/:id", handlerClient.DeleteRule)
+	eRules := e.Group("/rules")
+	eRules.GET("", handlerClient.ReadRules)
+	eRules.POST("", handlerClient.CreateRule)
+	eRules.GET("/:id", handlerClient.ReadRule)
+	eRules.PUT("/:id", handlerClient.UpdateRule)
+	eRules.DELETE("/:id", handlerClient.DeleteRule)
 
-	e.GET("/bundle/bundle.tar.gz", handlerClient.GetBundle)
+	eLogs := e.Group("/logs")
+	eLogs.POST("", handlerClient.CreateLogs, middleware.Decompress())
+	eLogs.GET("", handlerClient.ReadLogs)
+	eLogs.GET("/:decisionID", handlerClient.ReadLog)
+
+	eBundle := e.Group("/bundle")
+	eBundle.GET("/bundle.tar.gz", handlerClient.GetBundle)
 
 	address := net.JoinHostPort(cfg.Address, fmt.Sprintf("%d", cfg.Port))
 	e.Logger.Fatal(e.Start(address))
@@ -81,10 +90,11 @@ func newConfigClient() (config.Client, error) {
 	return config.NewClient(opts)
 }
 
-func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client) *handler.Client {
+func newHandlerClient(repository *rule.Rules, bundleClient *bundle.Client, logsClient *logs.Logs) *handler.Client {
 	opts := handler.Options{
 		Repository:   repository,
 		BundleClient: bundleClient,
+		LogsClient:   logsClient,
 	}
 
 	return handler.NewClient(opts)
