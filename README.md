@@ -100,6 +100,12 @@ Directory: [`pkg/handler`](pkg/handler)
 
 - Contains the logic for the REST API, invoked as Echo handlers
 
+#### pkg/logs
+
+Directory: [`pkg/logs`](pkg/logs)
+
+- Contains logic around storing and reading OPA Decision logs
+
 #### pkg/rule
 
 Directory: [`pkg/rule`](pkg/rule)
@@ -121,11 +127,16 @@ Right now it is self contained, but could just as well read the data about the r
 
 #### Endpoints
 
-- `GET /rules`: reads all rules
-- `POST /rules`: creates a rule
-- `GET /rules/:id`: reads rule with `:id`
-- `PUT /rules/:id`: updates rule with `:id`
-- `DELETE /rules/:id`: deletes rule with `:id`
+###### Group `/rules`
+
+- `GET /logs`: reads all logs
+- `POST /logs`: creates rules (takes decision log array)
+- `GET /logs/:id`: reads rule with `:decisionID` 
+
+###### Group `/logs`
+
+###### Group `/bundle`
+
 - `GET /bundle/bundle.tar.gz`: downloads the current OPA bundle (containing the module + dynamic data)
 
 ## Running with docker-compose
@@ -200,6 +211,47 @@ curl -X PUT --header "Content-Type: application/json" --data $DATA localhost:808
 
 ```shell
 curl -X DELETE localhost:8080/rules/1
+```
+
+### Create Logs
+
+```shell
+DATA='[
+  {
+    "labels": {
+      "app": "my-example-app",
+      "id": "1780d507-aea2-45cc-ae50-fa153c8e4a5a",
+      "version": "v0.28.0"
+    },
+    "decision_id": "4ca636c1-55e4-417a-b1d8-4aceb67960d1",
+    "bundles": {
+      "authz": {
+        "revision": "W3sibCI6InN5cy9jYXRhbG9nIiwicyI6NDA3MX1d"
+      }
+    },
+    "path": "http/example/authz/allow",
+    "input": {
+      "method": "GET",
+      "path": "/salary/bob"
+    },
+    "result": "true",
+    "requested_by": "[::1]:59943",
+    "timestamp": "2018-01-01T00:00:00.000000Z"
+  }
+]'
+curl --header "Content-Type: application/json" -X POST --data $DATA localhost:8080/logs
+```
+
+### Read Logs
+
+```shell
+curl localhost:8080/logs
+```
+
+### Read Log
+
+```shell
+curl localhost:8080/logs/4ca636c1-55e4-417a-b1d8-4aceb67960d1
 ```
 
 ## Testing OPA with cURL
