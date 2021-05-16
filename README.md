@@ -129,11 +129,21 @@ Right now it is self contained, but could just as well read the data about the r
 
 ###### Group `/rules`
 
-- `GET /logs`: reads all logs
-- `POST /logs`: creates rules (takes decision log array)
-- `GET /logs/:id`: reads rule with `:decisionID` 
+- `GET /rules`: reads all rules
+- `POST /rules`: creates a rule
+- `GET /rules/:id`: reads rule with `:id`
+- `PUT /rules/:id`: updates rule with `:id`
+- `DELETE /rules/:id`: deletes rule with `:id`
 
 ###### Group `/logs`
+
+- `GET /logs`: reads all logs
+- `POST /logs`: creates rules (takes decision log array)
+- `GET /logs/:decisionID`: reads rule with `:decisionID` 
+
+###### Group `/replay`
+
+- `GET /replay/:decisionID`: replays the `:decisionID` based on the current rules
 
 ###### Group `/bundle`
 
@@ -252,6 +262,81 @@ curl localhost:8080/logs
 
 ```shell
 curl localhost:8080/logs/4ca636c1-55e4-417a-b1d8-4aceb67960d1
+```
+
+### Replay log
+
+Start `api` and `opa`, then run the following and you should expect to be `Denied` (`result = false`):
+
+```shell
+DATA='{"input":{"user":"Simon","country":"Sweden","city":"Alingsås","building":"HQ","role":"user","device_type":"Printer"}}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8181/v1/data/rule/allow
+```
+
+You should get a response like this:
+
+```JSON
+{
+  "decision_id":"7b861f17-e1a7-49d5-8660-b13d5d42fd8e",
+  "result":false
+}
+```
+
+Verify that you can replay the decision:
+
+```shell
+curl localhost:8080/replay/7b861f17-e1a7-49d5-8660-b13d5d42fd8e
+```
+
+Result should look something like this:
+
+```JSON
+[
+    {
+        "expressions": [
+            {
+                "value": false,
+                "text": "data.rule.allow",
+                "location": {
+                    "row": 1,
+                    "col": 1
+                }
+            }
+        ]
+    }
+]
+```
+
+Now add a new rule that would allow it:
+
+```shell
+DATA='{"country": "Sweden", "city": "Alingsås", "building": "ANY", "role": "user", "device_type": "Printer", "action": "allow"}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8080/rules
+```
+
+Replay the event once more:
+
+```shell
+curl localhost:8080/replay/7b861f17-e1a7-49d5-8660-b13d5d42fd8e
+```
+
+Now the result should have changed:
+
+```JSON
+[
+    {
+        "expressions": [
+            {
+                "value": true,
+                "text": "data.rule.allow",
+                "location": {
+                    "row": 1,
+                    "col": 1
+                }
+            }
+        ]
+    }
+]
 ```
 
 ## Testing OPA with cURL

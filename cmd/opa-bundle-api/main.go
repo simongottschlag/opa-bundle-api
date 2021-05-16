@@ -9,6 +9,7 @@ import (
 	"github.com/xenitab/opa-bundle-api/pkg/config"
 	"github.com/xenitab/opa-bundle-api/pkg/handler"
 	"github.com/xenitab/opa-bundle-api/pkg/logs"
+	"github.com/xenitab/opa-bundle-api/pkg/replay"
 	"github.com/xenitab/opa-bundle-api/pkg/rule"
 
 	"github.com/labstack/echo/v4"
@@ -41,16 +42,17 @@ func main() {
 }
 
 func start(cfg config.Client) error {
-	rules := rule.NewClient()
+	ruleClient := rule.NewClient()
 
-	err := seedRules(rules)
+	err := seedRules(ruleClient)
 	if err != nil {
 		return err
 	}
 
 	bundleClient := bundle.NewClient()
 	logsClient := logs.NewClient()
-	handlerClient := newHandlerClient(rules, bundleClient, logsClient)
+	replayClient := newReplayClient(ruleClient, bundleClient, logsClient)
+	handlerClient := newHandlerClient(ruleClient, bundleClient, logsClient, replayClient)
 
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -71,6 +73,9 @@ func start(cfg config.Client) error {
 	eLogs.GET("", handlerClient.ReadLogs)
 	eLogs.GET("/:decisionID", handlerClient.ReadLog)
 
+	eReplay := e.Group("/replay")
+	eReplay.GET("/:decisionID", handlerClient.ReplayLog)
+
 	eBundle := e.Group("/bundle")
 	eBundle.GET("/bundle.tar.gz", handlerClient.GetBundle)
 
@@ -90,11 +95,22 @@ func newConfigClient() (config.Client, error) {
 	return config.NewClient(opts)
 }
 
-func newHandlerClient(ruleClient *rule.Client, bundleClient *bundle.Client, logsClient *logs.Client) *handler.Client {
+func newReplayClient(ruleClient *rule.Client, bundleClient *bundle.Client, logsClient *logs.Client) *replay.Client {
+	opts := replay.Options{
+		RuleClient:   ruleClient,
+		BundleClient: bundleClient,
+		LogsClient:   logsClient,
+	}
+
+	return replay.NewClient(opts)
+}
+
+func newHandlerClient(ruleClient *rule.Client, bundleClient *bundle.Client, logsClient *logs.Client, replayClient *replay.Client) *handler.Client {
 	opts := handler.Options{
 		RuleClient:   ruleClient,
 		BundleClient: bundleClient,
 		LogsClient:   logsClient,
+		ReplayClient: replayClient,
 	}
 
 	return handler.NewClient(opts)
