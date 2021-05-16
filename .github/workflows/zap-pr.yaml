@@ -1,0 +1,22 @@
+name: ZAP PR Validation
+
+on: pull_request
+
+jobs:
+  zap:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2.3.4
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16.2"
+      - name: Run application
+        run: |
+          go mod download
+          timeout 120s go run ./cmd/opa-bundle-api/main.go &
+          docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1):8080
