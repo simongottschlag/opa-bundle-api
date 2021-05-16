@@ -72,3 +72,8 @@ build:
 .SILENT: opa-eval
 opa-eval:
 	opa eval --data pkg/bundle/static/rule.rego --data test/opa/data.json --input test/opa/input.json --format pretty 'data.rule'
+
+.PHONY: opa-run
+.SILENT: opa-run
+opa-run:
+	opa run --server --addr :8181 --config-file ./test/opa/config.yaml

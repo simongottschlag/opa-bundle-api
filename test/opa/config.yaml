@@ -1,6 +1,6 @@
 services:
   - name: api
-    url: http://api:8080
+    url: http://localhost:8080
 
 bundles:
   api:
