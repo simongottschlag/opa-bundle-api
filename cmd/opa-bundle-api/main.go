@@ -74,7 +74,8 @@ func start(cfg config.Client) error {
 	eLogs.GET("/:decisionID", handlerClient.ReadLog)
 
 	eReplay := e.Group("/replay")
-	eReplay.GET("/:decisionID", handlerClient.ReplayLog)
+	eReplay.GET("/:decisionID", handlerClient.ReplayLogWithCurrentRules)
+	eReplay.POST("/:decisionID", handlerClient.ReplayLogWithNewRules)
 
 	eBundle := e.Group("/bundle")
 	eBundle.GET("/bundle.tar.gz", handlerClient.GetBundle)
