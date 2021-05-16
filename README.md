@@ -11,6 +11,8 @@ The whole picture would look something like this:
 
 In the proof of concept, there's no additional services for allowing/denying access, updating the database etcetera but shows how the concept could be.
 
+There's also a feature included to receive OPA Decision Logs and replay them based on current rules or a set of new rules (only testing them)
+
 ## Additional information
 
 ### Rules
@@ -106,6 +108,13 @@ Directory: [`pkg/logs`](pkg/logs)
 
 - Contains logic around storing and reading OPA Decision logs
 
+#### pkg/replay
+
+Directory: [`pkg/replay`](pkg/replay)
+
+- Contains logic around replaying OPA Decisions based on the bundle
+- Enables us to test if a change had the desired effect on a previous decision or test how a previous decision would be if we changed the rules
+
 #### pkg/rule
 
 Directory: [`pkg/rule`](pkg/rule)
@@ -144,7 +153,7 @@ Right now it is self contained, but could just as well read the data about the r
 ###### Group `/replay`
 
 - `GET /replay/:decisionID`: replays the `:decisionID` based on the current rules
-
+- `POST /replay/:decisionID`: replays the `:decisionID` based new rules posted (will not change the actual roles, only during the replay)
 ###### Group `/bundle`
 
 - `GET /bundle/bundle.tar.gz`: downloads the current OPA bundle (containing the module + dynamic data)
@@ -264,7 +273,7 @@ curl localhost:8080/logs
 curl localhost:8080/logs/4ca636c1-55e4-417a-b1d8-4aceb67960d1
 ```
 
-### Replay log
+### Replay log with current rules
 
 Start `api` and `opa`, then run the following and you should expect to be `Denied` (`result = false`):
 
@@ -321,6 +330,128 @@ curl localhost:8080/replay/7b861f17-e1a7-49d5-8660-b13d5d42fd8e
 ```
 
 Now the result should have changed:
+
+```JSON
+[
+    {
+        "expressions": [
+            {
+                "value": true,
+                "text": "data.rule.allow",
+                "location": {
+                    "row": 1,
+                    "col": 1
+                }
+            }
+        ]
+    }
+]
+```
+
+### Replay log with new rules
+
+Start `api` and `opa`, then run the following and you should expect to be `Denied` (`result = false`):
+
+Test with the `root` account:
+
+```shell
+DATA='{"input":{"user":"root","country":"Sweden","city":"Alingsås","building":"HQ","role":"super_admin","device_type":"Alarm"}}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8181/v1/data/rule/allow
+```
+
+Result for the `root` account:
+
+```JSON
+{
+    "decision_id": "b2929531-d387-42f1-afb8-4c9177911429",
+    "result": true
+}
+```
+
+Test with `John Doe` account:
+
+```shell
+DATA='{"input":{"user":"John Doe","country":"Sweden","city":"Gothenburg","building":"HQ","role":"guest","device_type":"Alarm"}}'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8181/v1/data/rule/allow
+```
+
+Result for the `John Doe` account:
+
+```JSON
+{
+    "decision_id": "746a568b-629a-4e39-933c-14f843821771",
+    "result": false
+}
+```
+
+Now replay the `root` account request with a set of new rules:
+
+```shell
+DATA='[
+    {
+        "country": "ANY",
+        "city": "ANY",
+        "building": "ANY",
+        "role": "super_admin",
+        "device_type": "ANY",
+        "action": "deny"
+    },
+    {
+        "country": "Sweden",
+        "city": "Gothenburg",
+        "building": "HQ",
+        "role": "guest",
+        "device_type": "Alarm",
+        "action": "allow"
+    }
+]'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8080/replay/b2929531-d387-42f1-afb8-4c9177911429
+```
+
+The replay result for the `root` account should look like this:
+
+```JSON
+[
+    {
+        "expressions": [
+            {
+                "value": false,
+                "text": "data.rule.allow",
+                "location": {
+                    "row": 1,
+                    "col": 1
+                }
+            }
+        ]
+    }
+]
+```
+
+Now replay the `John Doe` account request with a set of new rules:
+
+```shell
+DATA='[
+    {
+        "country": "ANY",
+        "city": "ANY",
+        "building": "ANY",
+        "role": "super_admin",
+        "device_type": "ANY",
+        "action": "deny"
+    },
+    {
+        "country": "Sweden",
+        "city": "Gothenburg",
+        "building": "HQ",
+        "role": "guest",
+        "device_type": "Alarm",
+        "action": "allow"
+    }
+]'
+curl -X POST --header "Content-Type: application/json" --data $DATA localhost:8080/replay/746a568b-629a-4e39-933c-14f843821771
+```
+
+The replay result for the `John Doe` account should look like this:
 
 ```JSON
 [
